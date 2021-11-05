@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: go-api
+  labels:
+    app: go-api
+
+spec:
+  selector:
+    matchLabels:
+      app: go-api
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: go-api
+    spec:
+      containers:
+        - name: go-api
+          image: nichollasf/kubernetes-go-server:v2.2
+
+          resources:
+            requests: # Mínimo
+              cpu: 100m # 1 vCPU -> 1000m (milicores)
+              memory: 20Mi
+            limits: # Máximo
+              cpu: 500m
+              memory: 25Mi
+
+          startupProbe: # Diz a partir de quando o readiness e o liveness vão ser executados
+            httpGet:
+              path: /health
+              port: 8282
+            periodSeconds: 3
+            failureThreshold: 30
+
+          readinessProbe: # Para verificar se já pode direcinar tráfego para o POD
+            httpGet:
+              path: /health
+              port: 8282
+            periodSeconds: 3 # A cada 5 segundos
+            failureThreshold: 1 # Quantidade de falhas pra reiniciar o POD
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8282 # Porta do Container
+            periodSeconds: 5 # A cada 5 segundos
+            failureThreshold: 1 # Quantidade de falhas pra reiniciar o POD
+            timeoutSeconds: 1
+            successThreshold: 1 # Quantidade sucessos para o POD ser considerado saudável
+
+          envFrom:
+            - configMapRef:
+                name: go-api-env
+            - secretRef:
+                name: go-api-secret
+          # env:
+          #   - name: NAME
+          #     valueFrom:
+          #       configMapKeyRef:
+          #         name: go-api-env
+          #         key: NAME
+
+          #   - name: AGE
+          #     valueFrom:
+          #       configMapKeyRef:
+          #         name: go-api-env
+          #         key: AGE
